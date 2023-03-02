@@ -1,4 +1,4 @@
-package com.mageddo.bluetoothfix;
+package com.mageddo.linux.bluetoothfix;
 
 
 import com.mageddo.commons.exec.CommandLines;

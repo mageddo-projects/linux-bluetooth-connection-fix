@@ -1,4 +1,4 @@
-package com.mageddo.bluetoothfix;
+package com.mageddo.linux.bluetoothfix;
 
 import lombok.extern.slf4j.Slf4j;
 
