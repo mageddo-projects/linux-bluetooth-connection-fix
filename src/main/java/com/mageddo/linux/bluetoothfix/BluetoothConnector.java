@@ -39,14 +39,14 @@ public class BluetoothConnector {
       this.restartService();
       status = this.connect0(deviceId);
 
-      log.debug(
+      log.info(
         "status=tried, occurrence={}, time={}",
         status, stopWatch.getTime() - stopWatch.getSplitTime()
       );
       Threads.sleep(1000);
 
     } while (status != Occurrence.CONNECTED);
-    log.debug(
+    log.info(
       "status=successfullyConnected!, device={}, totalTime={}",
       deviceId, stopWatch.getTime()
     );
@@ -58,10 +58,10 @@ public class BluetoothConnector {
           "bluetoothctl --timeout %d disconnect %s", timeoutSecs, deviceId
         )
         .checkExecution();
-      log.debug("status=disconnected, {}", result.toString(PRINT_OUT));
+      log.info("status=disconnected, {}", result.toString(PRINT_OUT));
       return true;
     } catch (ExecutionValidationFailedException e) {
-      log.debug("status=failedToDisconnect, {}", e.result()
+      log.info("status=failedToDisconnect, {}", e.result()
         .toString(PRINT_OUT));
       return false;
     }
@@ -78,7 +78,7 @@ public class BluetoothConnector {
       }, false);
     final CommandLines.Result result = CommandLines.exec(cmd)
       .checkExecution();
-    log.debug("status=restarted, {}", result.toString(PRINT_OUT));
+    log.info("status=restarted, {}", result.toString(PRINT_OUT));
     Threads.sleep(BLUETOOTH_POWER_ON_DELAY); // wait some time to bluetooth power on
     return result;
   }
@@ -100,7 +100,7 @@ public class BluetoothConnector {
 
   Occurrence connect0(String deviceId) {
     try {
-      log.debug("status=tryConnecting, device={}", deviceId);
+      log.info("status=tryConnecting, device={}", deviceId);
       final CommandLines.Result result = CommandLines
         .exec(
           "bluetoothctl --timeout %d connect %s", timeoutSecs, deviceId
@@ -111,7 +111,7 @@ public class BluetoothConnector {
         return occurrence;
       }
       final Occurrence occur = this.connectionOccurrenceCheck(deviceId);
-      log.debug("status=done, occurrence={}", occur);
+      log.info("status=done, occurrence={}", occur);
       return occur;
     } catch (ExecutionValidationFailedException e) {
       return OccurrenceParser.parse(e.result());
@@ -148,7 +148,7 @@ public class BluetoothConnector {
       .getOutAsString()
       .contains(audioSinkId);
 
-    log.debug("found={}, {}", found, result.toString(PRINT_OUT));
+    log.info("found={}, {}", found, result.toString(PRINT_OUT));
     return found;
 
   }
