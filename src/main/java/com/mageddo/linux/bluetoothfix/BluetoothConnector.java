@@ -14,7 +14,7 @@ public class BluetoothConnector {
   public static final int BLUETOOTH_POWER_ON_DELAY = 1000;
   private final int timeoutSecs = 10;
 
-  public void connect(String deviceId, String sudoPassword) {
+  public void connect(String deviceId) {
 
     if (this.isSoundDeviceConfigured(deviceId)) {
       log.info("status=bluetooth-device-already-configured-and-working, deviceId={}", deviceId);
@@ -36,7 +36,7 @@ public class BluetoothConnector {
         }
       }
 
-      this.restartService(sudoPassword);
+      this.restartService();
       status = this.connect0(deviceId);
 
       log.debug(
@@ -67,14 +67,11 @@ public class BluetoothConnector {
     }
   }
 
-  CommandLines.Result restartService(String sudoPassword) {
+  CommandLines.Result restartService() {
     final CommandLine cmd = new CommandLine("/bin/sh")
       .addArguments(new String[]{
         "-c",
-        String.format(
-          "echo %s | /usr/bin/sudo -S systemctl restart bluetooth.service",
-          sudoPassword
-        )
+        "systemctl restart bluetooth.service",
       }, false);
     final CommandLines.Result result = CommandLines.exec(cmd)
       .checkExecution();
