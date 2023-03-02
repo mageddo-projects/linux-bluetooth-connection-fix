@@ -68,6 +68,9 @@ public class BluetoothConnector {
   }
 
   CommandLines.Result restartService() {
+
+    log.warn("systemctl will ask you for root password to restart bluetooth service ...");
+
     final CommandLine cmd = new CommandLine("/bin/sh")
       .addArguments(new String[]{
         "-c",
