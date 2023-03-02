@@ -27,7 +27,7 @@ $ java -jar linux-bluetooth-connection-fix.jar 94:CC:56:E5:72:85
 # Requirements
 
 * Linux
-* JRE 8+
+* JRE 7+
 
 # How it works
 After buy a new bluetooth usb dongle, I noticed it was very difficult to make it connect to my headphones, also
