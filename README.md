@@ -1,5 +1,12 @@
 # linux-bluetooth-connection-fix
-Tries  to connect bluetooth devices on Linux despite error `hci0: command 0x0c24 tx timeout`
+Automated process to connect bluetooth devices on Linux despite the error `hci0: command <code> tx timeout`. 
+Related errors
+
+```bash
+Bluetooth: hci0: command 0x0c24 tx timeout
+Bluetooth: hci0: command 0x0c52 tx timeout
+Bluetooth: hci0: command 0x0c1a tx timeout
+```
 
 # Running it 
 
@@ -21,6 +28,23 @@ $ java -jar linux-bluetooth-connection-fix.jar 94:CC:56:E5:72:85
 
 * Linux
 * JRE 8+
+
+# How it works
+After buy a new bluetooth usb dongle, I noticed it was very difficult to make it connect to my headphones, also
+noticed if I restart the bluetooth service and try to connect sometimes it will work at some moment, so what I did 
+was jut automate this process. 
+
+About the bluetooth issue root cause:
+
+I wasn't able to find a real fix for the bluetooth problem, looks like it doesn't even exist, all people advise to buy a new
+hardware at the end, then I made this program as a workaround.
+
+Related issues 
+
+* https://bbs.archlinux.org/viewtopic.php?id=198718
+* https://bbs.archlinux.org/viewtopic.php?id=270693
+* https://bbs.archlinux.org/viewtopic.php?id=195886&p=2
+* https://unix.stackexchange.com/questions/581974/alpine-linux-failed-to-start-discovery-org-bluez-error-inprogress
 
 # Compiling from source
 
