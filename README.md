@@ -10,8 +10,15 @@ Bluetooth: hci0: command 0x0c1a tx timeout
 
 # Running it 
 
-Download the [latest release][1] then run the command below: 
+Download the [latest release][1]:
 
+Discover your device ID, for example `94:CC:56:E5:72:85` is my headphone:
+```bash
+$ bluetoothctl devices
+Device 94:CC:56:E5:72:85 WH-1000XM4
+```
+
+Then let's connect to it:
 ```bash
 $ java -jar linux-bluetooth-connection-fix.jar 94:CC:56:E5:72:85
 [main] INFO com.mageddo.linux.bluetoothfix.BluetoothConnector - found=false, code=0, out=null
