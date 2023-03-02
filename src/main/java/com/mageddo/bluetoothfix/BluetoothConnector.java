@@ -21,7 +21,7 @@ public class BluetoothConnector {
       return;
     }
 
-    final var stopWatch = StopWatch.createStarted();
+    final StopWatch stopWatch = StopWatch.createStarted();
     Occurrence status = null;
     do {
 
@@ -29,9 +29,10 @@ public class BluetoothConnector {
 
       if (status != null) {
         switch (status) {
-          case CONNECTED_BUT_SOUND_NOT_CONFIGURED, ERROR_CONNECTION_BUSY -> {
+          case CONNECTED_BUT_SOUND_NOT_CONFIGURED:
+          case ERROR_CONNECTION_BUSY:
             this.disconnect(deviceId);
-          }
+            break;
         }
       }
 
@@ -39,55 +40,55 @@ public class BluetoothConnector {
       status = this.connect0(deviceId);
 
       log.debug(
-          "status=tried, occurrence={}, time={}",
-          status, stopWatch.getTime() - stopWatch.getSplitTime()
+        "status=tried, occurrence={}, time={}",
+        status, stopWatch.getTime() - stopWatch.getSplitTime()
       );
       Threads.sleep(1000);
 
     } while (status != Occurrence.CONNECTED);
     log.debug(
-        "status=successfullyConnected!, device={}, totalTime={}",
-        deviceId, stopWatch.getTime()
+      "status=successfullyConnected!, device={}, totalTime={}",
+      deviceId, stopWatch.getTime()
     );
   }
 
   boolean disconnect(String deviceId) {
     try {
-      final var result = CommandLines.exec(
-              "bluetoothctl --timeout %d disconnect %s", timeoutSecs, deviceId
-          )
-          .checkExecution();
+      final CommandLines.Result result = CommandLines.exec(
+          "bluetoothctl --timeout %d disconnect %s", timeoutSecs, deviceId
+        )
+        .checkExecution();
       log.debug("status=disconnected, {}", result.toString(PRINT_OUT));
       return true;
     } catch (ExecutionValidationFailedException e) {
       log.debug("status=failedToDisconnect, {}", e.result()
-          .toString(PRINT_OUT));
+        .toString(PRINT_OUT));
       return false;
     }
   }
 
   CommandLines.Result restartService(String sudoPassword) {
-    final var cmd = new CommandLine("/bin/sh")
-        .addArguments(new String[]{
-            "-c",
-            String.format(
-                "echo %s | /usr/bin/sudo -S systemctl restart bluetooth.service",
-                sudoPassword
-            )
-        }, false);
-    final var result = CommandLines.exec(cmd)
-        .checkExecution();
+    final CommandLine cmd = new CommandLine("/bin/sh")
+      .addArguments(new String[]{
+        "-c",
+        String.format(
+          "echo %s | /usr/bin/sudo -S systemctl restart bluetooth.service",
+          sudoPassword
+        )
+      }, false);
+    final CommandLines.Result result = CommandLines.exec(cmd)
+      .checkExecution();
     log.debug("status=restarted, {}", result.toString(PRINT_OUT));
     Threads.sleep(BLUETOOTH_POWER_ON_DELAY); // wait some time to bluetooth power on
     return result;
   }
 
   boolean isConnected(String deviceId) {
-    final var result = CommandLines.exec(
-            "bluetoothctl info %s", deviceId
-        )
-        .checkExecution();
-    final var out = result.getOutAsString();
+    final CommandLines.Result result = CommandLines.exec(
+        "bluetoothctl info %s", deviceId
+      )
+      .checkExecution();
+    final String out = result.getOutAsString();
     if (out.contains("Connected: yes")) {
       return true;
     } else if (out.contains("Connected: no")) {
@@ -100,16 +101,16 @@ public class BluetoothConnector {
   Occurrence connect0(String deviceId) {
     try {
       log.debug("status=tryConnecting, device={}", deviceId);
-      final var result = CommandLines
-          .exec(
-              "bluetoothctl --timeout %d connect %s", timeoutSecs, deviceId
-          )
-          .checkExecution();
-      final var occurrence = OccurrenceParser.parse(result);
+      final CommandLines.Result result = CommandLines
+        .exec(
+          "bluetoothctl --timeout %d connect %s", timeoutSecs, deviceId
+        )
+        .checkExecution();
+      final BluetoothConnector.Occurrence occurrence = OccurrenceParser.parse(result);
       if (occurrence != null) {
         return occurrence;
       }
-      final var occur = this.connectionOccurrenceCheck(deviceId);
+      final Occurrence occur = this.connectionOccurrenceCheck(deviceId);
       log.debug("status=done, occurrence={}", occur);
       return occur;
     } catch (ExecutionValidationFailedException e) {
@@ -118,7 +119,7 @@ public class BluetoothConnector {
   }
 
   Occurrence connectionOccurrenceCheck(String deviceId) {
-    final var connected = this.isConnected(deviceId);
+    final boolean connected = this.isConnected(deviceId);
     if (connected) {
       if (this.isSoundDeviceConfigured(deviceId)) {
         return Occurrence.CONNECTED;
@@ -134,18 +135,18 @@ public class BluetoothConnector {
    * bluez_sink.94_DB_56_F5_78_41.a2dp_sink
    */
   boolean isSoundDeviceConfigured(String deviceId) {
-    final var audioSinkId = String.format(
-        "bluez_sink.%s.a2dp_sink", deviceId.replaceAll(":", "_")
+    final String audioSinkId = String.format(
+      "bluez_sink.%s.a2dp_sink", deviceId.replaceAll(":", "_")
     );
-    final var cmd = new CommandLine("/bin/sh")
-        .addArguments(new String[]{"-c", "pactl list | grep 'Sink'"}, false);
+    final CommandLine cmd = new CommandLine("/bin/sh")
+      .addArguments(new String[]{"-c", "pactl list | grep 'Sink'"}, false);
 
-    final var result = CommandLines.exec(cmd)
-        .checkExecution();
+    final CommandLines.Result result = CommandLines.exec(cmd)
+      .checkExecution();
 
-    final var found = result
-        .getOutAsString()
-        .contains(audioSinkId);
+    final boolean found = result
+      .getOutAsString()
+      .contains(audioSinkId);
 
     log.debug("found={}, {}", found, result.toString(PRINT_OUT));
     return found;
@@ -157,7 +158,6 @@ public class BluetoothConnector {
     CONNECTED,
     DISCONNECTED,
     ERROR_UNKNOWN,
-
     CONNECTED_BUT_SOUND_NOT_CONFIGURED;
   }
 

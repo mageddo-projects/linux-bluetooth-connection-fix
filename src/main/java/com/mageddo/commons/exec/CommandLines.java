@@ -32,9 +32,9 @@ public class CommandLines {
 
   @SneakyThrows
   public static Result exec(CommandLine commandLine, long timeout) {
-    final var out = new ByteArrayOutputStream();
-    final var executor = new DaemonExecutor();
-    final var streamHandler = new PumpStreamHandler(out);
+    final ByteArrayOutputStream out = new ByteArrayOutputStream();
+    final DaemonExecutor executor = new DaemonExecutor();
+    final PumpStreamHandler streamHandler = new PumpStreamHandler(out);
     executor.setStreamHandler(streamHandler);
     int exitCode;
     try {
