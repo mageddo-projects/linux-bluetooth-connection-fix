@@ -8,11 +8,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.lang3.time.StopWatch;
 
+import javax.swing.*;
+
 @Slf4j
 public class BluetoothConnector {
+
   public static final boolean PRINT_OUT = false;
   public static final int BLUETOOTH_POWER_ON_DELAY = 1000;
   private final int timeoutSecs = 10;
+  private char[] sudoPassword;
 
   public void connect(String deviceId) {
 
@@ -70,15 +74,28 @@ public class BluetoothConnector {
   CommandLines.Result restartService() {
 
     log.warn("systemctl will ask you for root password to restart bluetooth service ...");
+    if (this.sudoPassword == null) {
+      while (true) {
+        JPasswordField pf = new JPasswordField();
+        final int res = JOptionPane.showConfirmDialog(null, pf, "Enter Password", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (res == JOptionPane.OK_OPTION) {
+          this.sudoPassword = pf.getPassword();
+          break;
+        }
+      }
+    }
 
     final CommandLine cmd = new CommandLine("/bin/sh")
       .addArguments(new String[]{
         "-c",
-        "systemctl restart bluetooth.service",
+        String.format(
+          "echo %s | /usr/bin/sudo -S systemctl restart bluetooth.service",
+          new String(this.sudoPassword)
+        )
       }, false);
     final CommandLines.Result result = CommandLines.exec(cmd)
       .checkExecution();
-    log.info("status=restarted, {}", result.toString(PRINT_OUT));
+    log.debug("status=restarted, {}", result.toString(PRINT_OUT));
     Threads.sleep(BLUETOOTH_POWER_ON_DELAY); // wait some time to bluetooth power on
     return result;
   }
