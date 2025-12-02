@@ -142,7 +142,7 @@ public class BluetoothConnector {
   }
 
   private void waitBluetoothCommandComplete() {
-    Threads.sleep(2_000);
+    Threads.sleep(5_000);
   }
 
   Occurrence connectionOccurrenceCheck(ConReq req) {
