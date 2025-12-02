@@ -12,12 +12,12 @@ public class BluetoothCommandRunner {
 
   public String exec(int timeoutSecs, String... commands) {
     final var str = String.join("\n", commands);
-    final DefaultExecutor executor = new DefaultExecutor();
-    final ByteArrayOutputStream out = new ByteArrayOutputStream();
-    final PumpStreamHandler streamHandler = new PumpStreamHandler(out);
+    final var executor = new DefaultExecutor();
+    final var out = new ByteArrayOutputStream();
+    final var streamHandler = new PumpStreamHandler(out);
     executor.setStreamHandler(streamHandler);
 
-    final CommandLine cmd = new CommandLine("/bin/bash");
+    final var cmd = new CommandLine("/bin/bash");
     cmd.addArgument("-c");
     cmd.addArgument(
         String.format(

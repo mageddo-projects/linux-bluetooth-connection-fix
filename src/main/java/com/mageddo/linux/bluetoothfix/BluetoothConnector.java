@@ -31,7 +31,7 @@ public class BluetoothConnector {
       return;
     }
 
-    final StopWatch stopWatch = StopWatch.createStarted();
+    final var stopWatch = StopWatch.createStarted();
     Occurrence status = null;
     do {
 
@@ -42,18 +42,19 @@ public class BluetoothConnector {
           case CONNECTED_BUT_SOUND_NOT_CONFIGURED:
           case ERROR_CONNECTION_BUSY:
             this.disconnect(conReq);
+            this.waitBluetoothCommandComplete();
             break;
         }
       }
 
       this.restartService();
+
       status = this.connect0(conReq);
 
       log.info(
           "status=tried, occurrence={}, time={}",
           status, stopWatch.getTime() - stopWatch.getSplitTime()
       );
-      Threads.sleep(1000);
 
     } while (status != Occurrence.CONNECTED);
     log.info(
@@ -74,8 +75,8 @@ public class BluetoothConnector {
 
   CommandLines.Result restartService() {
     askForPassword();
-    final var result = restartService0();
-    Threads.sleep(BLUETOOTH_POWER_ON_DELAY); // wait some time to bluetooth power on
+    final var result = this.restartService0();
+    Threads.sleep(BLUETOOTH_POWER_ON_DELAY);
     return result;
   }
 
@@ -132,11 +133,16 @@ public class BluetoothConnector {
         String.format("select %s", req.controllerId()),
         String.format("connect %s", req.deviceId())
     );
+    this.waitBluetoothCommandComplete();
     final var occur = this.connectionOccurrenceCheck(req);
     if (occur != Occurrence.CONNECTED) {
       log.info("status=notConnected, occurrence={}, msg={}", occur, resStr);
     }
     return occur;
+  }
+
+  private void waitBluetoothCommandComplete() {
+    Threads.sleep(2_000);
   }
 
   Occurrence connectionOccurrenceCheck(ConReq req) {
