@@ -1,27 +1,33 @@
 package com.mageddo.linux.bluetoothfix;
 
 
+import javax.swing.JOptionPane;
+import javax.swing.JPasswordField;
+
 import com.mageddo.commons.exec.CommandLines;
-import com.mageddo.commons.exec.ExecutionValidationFailedException;
 import com.mageddo.commons.lang.Threads;
-import lombok.extern.slf4j.Slf4j;
+
 import org.apache.commons.exec.CommandLine;
 import org.apache.commons.lang3.time.StopWatch;
 
-import javax.swing.*;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
+@RequiredArgsConstructor
 public class BluetoothConnector {
+
+  private final BluetoothCommandRunner runner;
 
   public static final boolean PRINT_OUT = false;
   public static final int BLUETOOTH_POWER_ON_DELAY = 1000;
-  private final int timeoutSecs = 10;
+  private final int timeoutSecs = 6;
   private char[] sudoPassword;
 
-  public void connect(String deviceId) {
+  public void connect(ConReq conReq) {
 
-    if (this.isSoundDeviceConfigured(deviceId)) {
-      log.info("status=bluetooth-device-already-configured-and-working, deviceId={}", deviceId);
+    if (this.isSoundDeviceConfigured(conReq.deviceId())) {
+      log.info("status=bluetooth-device-already-configured-and-working, conReq={}", conReq);
       return;
     }
 
@@ -35,110 +41,108 @@ public class BluetoothConnector {
         switch (status) {
           case CONNECTED_BUT_SOUND_NOT_CONFIGURED:
           case ERROR_CONNECTION_BUSY:
-            this.disconnect(deviceId);
+            this.disconnect(conReq);
             break;
         }
       }
 
       this.restartService();
-      status = this.connect0(deviceId);
+      status = this.connect0(conReq);
 
       log.info(
-        "status=tried, occurrence={}, time={}",
-        status, stopWatch.getTime() - stopWatch.getSplitTime()
+          "status=tried, occurrence={}, time={}",
+          status, stopWatch.getTime() - stopWatch.getSplitTime()
       );
       Threads.sleep(1000);
 
     } while (status != Occurrence.CONNECTED);
     log.info(
-      "status=successfullyConnected!, device={}, totalTime={}",
-      deviceId, stopWatch.getTime()
+        "status=successfullyConnected!, device={}, totalTime={}",
+        conReq, stopWatch.getTime()
     );
   }
 
-  boolean disconnect(String deviceId) {
-    try {
-      final CommandLines.Result result = CommandLines.exec(
-          "bluetoothctl --timeout %d disconnect %s", timeoutSecs, deviceId
-        )
-        .checkExecution();
-      log.info("status=disconnected, {}", result.toString(PRINT_OUT));
-      return true;
-    } catch (ExecutionValidationFailedException e) {
-      log.info("status=failedToDisconnect, {}", e.result()
-        .toString(PRINT_OUT));
-      return false;
-    }
+  boolean disconnect(ConReq req) {
+    final var msg = this.runner.exec(
+        this.timeoutSecs,
+        String.format("select %s", req.controllerId()),
+        String.format("disconnect %s", req.deviceId())
+    );
+    log.info("msg={}", msg);
+    return true;
   }
 
   CommandLines.Result restartService() {
+    askForPassword();
+    final var result = restartService0();
+    Threads.sleep(BLUETOOTH_POWER_ON_DELAY); // wait some time to bluetooth power on
+    return result;
+  }
 
+  private CommandLines.Result restartService0() {
+    final var cmd = new CommandLine("/bin/sh")
+        .addArguments(new String[]{
+                "-c",
+                String.format(
+                    "echo %s | /usr/bin/sudo -S systemctl restart bluetooth.service",
+                    new String(this.sudoPassword)
+                )
+            }, false
+        );
+    final var result = CommandLines.exec(cmd)
+        .checkExecution();
+    log.debug("status=restarted, {}", result.toString(PRINT_OUT));
+    return result;
+  }
+
+  private void askForPassword() {
     log.warn("systemctl will ask you for root password to restart bluetooth service ...");
     if (this.sudoPassword == null) {
       while (true) {
         JPasswordField pf = new JPasswordField();
-        final int res = JOptionPane.showConfirmDialog(null, pf, "Enter Password", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        final int res = JOptionPane.showConfirmDialog(null, pf, "Enter Password",
+            JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE
+        );
         if (res == JOptionPane.OK_OPTION) {
           this.sudoPassword = pf.getPassword();
           break;
         }
       }
     }
-
-    final CommandLine cmd = new CommandLine("/bin/sh")
-      .addArguments(new String[]{
-        "-c",
-        String.format(
-          "echo %s | /usr/bin/sudo -S systemctl restart bluetooth.service",
-          new String(this.sudoPassword)
-        )
-      }, false);
-    final CommandLines.Result result = CommandLines.exec(cmd)
-      .checkExecution();
-    log.debug("status=restarted, {}", result.toString(PRINT_OUT));
-    Threads.sleep(BLUETOOTH_POWER_ON_DELAY); // wait some time to bluetooth power on
-    return result;
   }
 
-  boolean isConnected(String deviceId) {
-    final CommandLines.Result result = CommandLines.exec(
-        "bluetoothctl info %s", deviceId
-      )
-      .checkExecution();
-    final String out = result.getOutAsString();
-    if (out.contains("Connected: yes")) {
+  boolean isConnected(ConReq req) {
+    final var msg = this.runner.exec(
+        this.timeoutSecs,
+        String.format("select %s", req.controllerId()),
+        String.format("info %s", req.deviceId())
+    );
+    if (msg.contains("Connected: yes")) {
       return true;
-    } else if (out.contains("Connected: no")) {
+    } else if (msg.contains("Connected: no")) {
       return false;
     } else {
-      throw new IllegalStateException(String.format("cant check if it's connected: %s", out));
+      throw new IllegalStateException(String.format("cant check if it's connected: %s", msg));
     }
   }
 
-  Occurrence connect0(String deviceId) {
-    try {
-      log.info("status=tryConnecting, device={}", deviceId);
-      final CommandLines.Result result = CommandLines
-        .exec(
-          "bluetoothctl --timeout %d connect %s", timeoutSecs, deviceId
-        )
-        .checkExecution();
-      final BluetoothConnector.Occurrence occurrence = OccurrenceParser.parse(result);
-      if (occurrence != null) {
-        return occurrence;
-      }
-      final Occurrence occur = this.connectionOccurrenceCheck(deviceId);
-      log.info("status=done, occurrence={}", occur);
-      return occur;
-    } catch (ExecutionValidationFailedException e) {
-      return OccurrenceParser.parse(e.result());
+  Occurrence connect0(ConReq req) {
+    final var resStr = this.runner.exec(
+        this.timeoutSecs,
+        String.format("select %s", req.controllerId()),
+        String.format("connect %s", req.deviceId())
+    );
+    final var occur = this.connectionOccurrenceCheck(req);
+    if (occur != Occurrence.CONNECTED) {
+      log.info("status=notConnected, occurrence={}, msg={}", occur, resStr);
     }
+    return occur;
   }
 
-  Occurrence connectionOccurrenceCheck(String deviceId) {
-    final boolean connected = this.isConnected(deviceId);
+  Occurrence connectionOccurrenceCheck(ConReq req) {
+    final boolean connected = this.isConnected(req);
     if (connected) {
-      if (this.isSoundDeviceConfigured(deviceId)) {
+      if (this.isSoundDeviceConfigured(req.deviceId())) {
         return Occurrence.CONNECTED;
       }
       return Occurrence.CONNECTED_BUT_SOUND_NOT_CONFIGURED;
@@ -153,17 +157,17 @@ public class BluetoothConnector {
    */
   boolean isSoundDeviceConfigured(String deviceId) {
     final String audioSinkId = String.format(
-      "bluez_sink.%s.a2dp_sink", deviceId.replaceAll(":", "_")
+        "bluez_sink.%s.a2dp_sink", deviceId.replaceAll(":", "_")
     );
     final CommandLine cmd = new CommandLine("/bin/sh")
-      .addArguments(new String[]{"-c", "pactl list | grep 'Sink'"}, false);
+        .addArguments(new String[]{"-c", "pactl list | grep 'Sink'"}, false);
 
     final CommandLines.Result result = CommandLines.exec(cmd)
-      .checkExecution();
+        .checkExecution();
 
     final boolean found = result
-      .getOutAsString()
-      .contains(audioSinkId);
+        .getOutAsString()
+        .contains(audioSinkId);
 
     log.info("found={}, {}", found, result.toString(PRINT_OUT));
     return found;
@@ -172,10 +176,12 @@ public class BluetoothConnector {
 
   public enum Occurrence {
     ERROR_CONNECTION_BUSY,
+    DEVICE_NOT_AVAILABLE,
     CONNECTED,
     DISCONNECTED,
     ERROR_UNKNOWN,
-    CONNECTED_BUT_SOUND_NOT_CONFIGURED;
+    CONNECTED_BUT_SOUND_NOT_CONFIGURED,
+    NO_ERROR;
   }
 
 }

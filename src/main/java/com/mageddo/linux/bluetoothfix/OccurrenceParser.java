@@ -2,14 +2,17 @@ package com.mageddo.linux.bluetoothfix;
 
 
 import com.mageddo.commons.exec.CommandLines;
+import com.mageddo.linux.bluetoothfix.BluetoothConnector.Occurrence;
 
 public class OccurrenceParser {
-  public static BluetoothConnector.Occurrence parse(CommandLines.Result result) {
+  public static Occurrence parse(CommandLines.Result result) {
     final String out = result.getOutAsString();
     if (out.contains("br-connection-busy")) {
-      return BluetoothConnector.Occurrence.ERROR_CONNECTION_BUSY;
+      return Occurrence.ERROR_CONNECTION_BUSY;
+//    } else if (out.contains("not available")) {
+//      return Occurrence.DEVICE_NOT_AVAILABLE;
     } else {
-      return null;
+      throw new IllegalStateException(String.format("unknown result: %s", result.getOutAsString()));
     }
   }
 }
